@@ -4,29 +4,32 @@ class CtCrawler < BaseCrawler
   protected
 
   def _set_up_page
-    url = @driver.find_element(class: 'button--auth').find_element(xpath: ".//a").attribute('href')
-    pdf_timestamp = Time.now.strftime('%Y%m%d%H%M')
-    `curl #{url} -o data/#{@st}/#{pdf_timestamp}.pdf`
-    @reader = PDF::Reader.new("data/#{@st}/#{pdf_timestamp}.pdf")
+    @s = @driver.find_elements(class: 'callout--secondary')[0].text.gsub(',','')
+    # "CT COVID-19 Data Tracker\nView additional graphs and tables containing data on cases in Connecticut\nDaily overview\nPositive Cases: 44179 (+87)\nTotal Deaths: 4097 (+13)\nHospitalized: 293 (-31)\nTests Reported: 310654 (+4658)"
+    #url = @driver.find_element(class: 'button--auth').find_element(xpath: ".//a").attribute('href')
+    #pdf_timestamp = Time.now.strftime('%Y%m%d%H%M')
+    #`curl #{url} -o data/#{@st}/#{pdf_timestamp}.pdf`
+    #@reader = PDF::Reader.new("data/#{@st}/#{pdf_timestamp}.pdf")
   end
 
   def _find_hospitalized
-    @results[:hospitalized] = /Patients Currently Hospitalized with COVID-19 (\d+)/.match(page_one)[1]&.to_i
+    @results[:hospitalized] = /\nHospitalized: (\d+)/.match(@s)[1]&.to_i
   end
 
   def _find_positive
-    @results[:positive] = /a total of (\d+) cases of COVID-19/.match(page_one)[1]&.to_i
+    @results[:positive] = /\nPositive Cases: (\d+)/.match(@s)[1]&.to_i
   end
 
   def _find_deaths
-    @results[:deaths] = /COVID-19-Associated Deaths (\d+)/.match(page_one)[1]&.to_i
+    @results[:deaths] = /\nTotal Deaths: (\d+)/.match(@s)[1]&.to_i
   end
 
   def _find_tested
-    @results[:tested] = /COVID-19 Tests Reported (\d+)/.match(page_one)[1]&.to_i
+    @results[:tested] = /\nTests Reported: (\d+)/.match(@s)[1]&.to_i
   end
 
   def _find_counties
+    return
     page_one.scan(/(\w* \w+ County \d+ \d+)/).flatten.each do |county_data|
       match_data = /\A(.* County) (\d+) (\d+)/.match(county_data)
       @results[:counties] << {
@@ -38,6 +41,7 @@ class CtCrawler < BaseCrawler
   end
 
   def _find_towns
+    return
     @results[:towns] = []
     page_five = @reader.page(5).text.gsub(/\s+/,' ').tr(',','')
     page_five.scan(/(Cases)?(\w* ?\w+ \d+)/).each do |_,town|
@@ -54,6 +58,7 @@ class CtCrawler < BaseCrawler
   end
 
   def page_one
+    return ''
     @page_one ||= @reader.page(1).text.gsub(/\s+/,' ').tr(',','')
   end
 end
